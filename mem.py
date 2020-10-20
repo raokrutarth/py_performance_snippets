@@ -4,17 +4,18 @@ import functools
 import sys
 from fastapi.security import HTTPBearer
 import resource
-import tracemalloc
 from pprint import pformat
 import logging
-
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 logging.basicConfig(level=logging.INFO)
 
 
-PAYLOAD = "A0000b"
+PAYLOAD = "A0000b"  # dummy payload to create memory ops
 PAYLOAD_REPLICATION = 50000  # number of time the payload is replicated
-NUM_CALLS = 50000  # number of times the target function is called by timeit
+NUM_CALLS = 1000  # number of times the target function is called by timeit
 
 """
     Sending param through a class
@@ -23,11 +24,12 @@ NUM_CALLS = 50000  # number of times the target function is called by timeit
 
 class MyClass(HTTPBearer):
 
-    def __init__(self):
+    def __init__(self, n: int):
         super().__init__()
+        self.n = n
 
-    def foo(self, n: int):
-        return [PAYLOAD for _ in range(n)]
+    def dependency(self, request: Request) -> List[str]:
+        return [PAYLOAD for _ in range(self.n)]
 
 
 """
@@ -38,6 +40,7 @@ class MyClass(HTTPBearer):
 def decorator_with_arg(n: int):
 
     def decorator(func):
+
         @functools.wraps(func)
         def wrapper_decorator(*args, **kwargs):
             kwargs["my_param"] = [PAYLOAD for _ in range(n)]
@@ -48,29 +51,46 @@ def decorator_with_arg(n: int):
 
 
 """
-    Target functions that do the same thing.
+    Target functions that do the same thing withing a fastapi app.
 """
 
 
-def my_target_func1(my_param: List[str] = MyClass().foo(PAYLOAD_REPLICATION)):
-    assert len(my_param) == PAYLOAD_REPLICATION
-    a = map(str.lower, my_param)
-    return a
+def test_app() -> TestClient:
+    """
+        Sample REST application that uses FastAPI Dependency injection
+        and a decorator prerequisite to provide different endpoints for
+        testing performance.
+    """
+    app = FastAPI()
+
+    @app.get("/object")
+    async def get_new_obj_per_call(
+        my_param: List[str] = Depends(MyClass(PAYLOAD_REPLICATION).dependency),
+    ):
+        assert len(my_param) == PAYLOAD_REPLICATION
+        r = [x.lower() for x in my_param]
+        return r[0]
+
+    @app.get("/decorator")
+    @decorator_with_arg(PAYLOAD_REPLICATION)
+    async def get_decorator_per_call(**kwargs):
+        my_param = kwargs["my_param"]
+        assert len(my_param) == PAYLOAD_REPLICATION
+        r = [x.lower() for x in my_param]
+        return r
+
+    return TestClient(app)
 
 
-@decorator_with_arg(n=PAYLOAD_REPLICATION)
-def my_target_func2(my_param: List[str]):
-    assert len(my_param) == PAYLOAD_REPLICATION
-    a = map(str.lower, my_param)
-    return a
+client = test_app()
 
 
 def test1():
-    my_target_func1()
+    client.get("/object")
 
 
 def test2():
-    my_target_func2()
+    client.get("/decorator")
 
 
 if __name__ == '__main__':
@@ -84,6 +104,7 @@ if __name__ == '__main__':
         logging.info("[+] Running decorator per call test.")
         execution_time = timeit("test2()", setup=gc_config, number=NUM_CALLS, globals=globals())
 
+    # log peak main memory usage
     peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     logging.info(f"Peak RSS memory usage: {pformat(peak_rss)} kB")
 

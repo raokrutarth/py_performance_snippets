@@ -14,12 +14,12 @@
 mem_sample_sec="0.0005"
 
 mprof run --interval ${mem_sample_sec} --multiprocess ./mem.py 1
-mprof plot --title="with new obj per call" -o mem_obj_per.jpg
+mprof plot --title="New class object per call" -o mem_obj_per.jpg
 
 echo
 
 mprof run --interval ${mem_sample_sec} --multiprocess ./mem.py 2
-mprof plot --title="with decorator per call" -o mem_decorator_per.jpg
+mprof plot --title="Decorator per call" -o mem_decorator_per.jpg
 
 
 rm -rf *.dat
