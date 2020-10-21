@@ -29,6 +29,9 @@ class MyClass(HTTPBearer):
         self.n = n
 
     def dependency(self, request: Request) -> List[str]:
+        # making sure we can extract the HTTP request object from the endpoint call.
+        assert isinstance(request, Request)
+
         return [PAYLOAD for _ in range(self.n)]
 
 
@@ -44,6 +47,10 @@ def decorator_with_arg(n: int):
         @functools.wraps(func)
         def wrapper_decorator(*args, **kwargs):
             kwargs["my_param"] = [PAYLOAD for _ in range(n)]
+
+            # making sure we can extract the HTTP request object from the endpoint call.
+            assert isinstance(args["request"], Request)
+
             return func(*args, **kwargs)
         return wrapper_decorator
 
@@ -69,7 +76,7 @@ def test_app() -> TestClient:
     ):
         assert len(my_param) == PAYLOAD_REPLICATION
         r = [x.lower() for x in my_param]
-        return r[0]
+        return r
 
     @app.get("/decorator")
     @decorator_with_arg(PAYLOAD_REPLICATION)

@@ -22,15 +22,15 @@ Memory usage was the similar but decorators are slower.
 mprof: Sampling memory every 0.0005s
 running new process
 INFO:root:[+] Running object/per call test.
-INFO:root:Peak RSS memory usage: 80380 kB
-INFO:root:Execution time for 1000 calls: 9.631143831997178s
+INFO:root:Peak RSS memory usage: 89416 kB
+INFO:root:Execution time for 1000 calls: 96.67329733599036s
 Using last profile data.
 
 mprof: Sampling memory every 0.0005s
 running new process
 INFO:root:[+] Running decorator per call test.
-INFO:root:Peak RSS memory usage: 33512 kB
-INFO:root:Execution time for 1000 calls: 1.2871662839897908s
+INFO:root:Peak RSS memory usage: 33860 kB
+INFO:root:Execution time for 1000 calls: 1.2823796810116619s
 Using last profile data.
 ```
 
